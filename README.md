@@ -12,6 +12,8 @@
 (*) with the appropriate `*cs` and `*cs out` commands in the `.svx`
 source files (see below).
 
+_To be done: add functionality to import `.3d` files at <v8 format._
+
 ### Installation
 
 WORK IN PROGRESS UPDATING QGIS3 PLUGIN
