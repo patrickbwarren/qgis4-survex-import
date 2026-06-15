@@ -6,11 +6,11 @@
 * import stations and legs with full metadata;
 * create passage walls, cross-sections, and polygons from LRUD data;
 * all features have _z_ dimensions, and (mean) elevations to assist with downstream workflows;
-* the co-ordinate reference system (CRS) can be imported from the `.3d` file (*);
+* the co-ordinate reference system (CRS) can be imported from the `.3d` file;
 * results can be saved immediately as a GeoPackage file.
 
-(*) with the appropriate `*cs` and `*cs out` commands in the `.svx`
-source files (see below).
+CRS import requires the appropriate `*cs` and `*cs out` commands in
+the `.svx` source files (see below).
 
 _To be done: add functionality to import `.3d` files at <v8 format._
 
