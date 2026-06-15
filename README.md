@@ -16,14 +16,14 @@ source files (see below).
 
 WORK IN PROGRESS UPDATING QGIS3 PLUGIN
 
-The current version (v1.3.1) should be available through the [QGIS Python Plugins
-Repository](https://plugins.qgis.org/plugins/): launch QGIS3,
+The current version (v2.0) will eventually be available through the [QGIS Python Plugins
+Repository](https://plugins.qgis.org/plugins/): launch QGIS4,
 go to 'Plugins &rarr; Manage and Install Plugins...', then (under the
 'All' tab) enter 'survex' in the search filter to find the 'Import `.3d`
 file' plugin, select it and click 'Install Plugin'.
 
 When installed, a menu item 'Import .3d file' should appear on the
-'Vector' drop-down menu in the main QGIS3 window, and (if enabled) a
+'Vector' drop-down menu in the main QGIS4 window, and (if enabled) a
 .3d icon in a toolbar.
 
 #### Manual installation
@@ -33,10 +33,10 @@ route is not available:
 
 * clone or download the present GitHub repository;
 * copy `survex_import` to `python/plugins/` in the current active
-  profile, the location of which can be found from within QGIS3 by
+  profile, the location of which can be found from within QGIS4 by
   going to 'Settings &rarr; User Profiles &rarr; Open Active Profile
   Folder' (\*);
-* enable the plugin in QGIS3 by going to 'Plugins &rarr; Manage and
+* enable the plugin in QGIS4 by going to 'Plugins &rarr; Manage and
   Install Plugins...'; make sure the box next to 'Import .3d file'
   is checked, in the 'Installed' tab.
 
@@ -60,7 +60,7 @@ window for the user to select a `.3d` file with a number of options:
     - as cross sections;
     - as traverses, showing the centrelines used for above;
 * Optionally, set the co-ordinate reference system (CRS)
-  from the `.3d` file or inherit from the QGIS3 project;
+  from the `.3d` file or inherit from the QGIS4 project;
 * Keep features from previous import(s) (optional);
 * Select a GeoPackage (.gpkg) file to save results (optional).
   
@@ -116,7 +116,7 @@ The STYLE field for legs is one of NORMAL, DIVING, CARTESIAN,
 CYLPOLAR, or NOSURVEY.
 
 The DATE fields are either the same, or represent a date
-range, in the standard QGIS3 format YYYY-MM-DD.
+range, in the standard QGIS4 format YYYY-MM-DD.
 
 If up / down data for passage polygons is requested, then the polygons have
 MEAN_UP and MEAN_DOWN attributes in addition to ELEVATION.  These are
@@ -304,7 +304,7 @@ In some cases it may be helpful to create beforehand a user-defined
 CRS to select in the import dialog.  For example, if the `*cs`
 commands are omitted from `DowProv.svx`, the resulting `.3d` file lacks
 CS metadata and all co-ordinates are relative to the OS SD grid
-square.  This `.3d` file can nevertheless still be imported into QGIS3
+square.  This `.3d` file can nevertheless still be imported into QGIS4
 by first creating a custom CRS (in QGIS) for the SD grid square, then specifying
 this custom CRS in the import dialog (or inheriting from the project
 CRS if that is set appropriately).
@@ -445,7 +445,7 @@ cave survey data is probably best left to another place though!
 
 ### What to do next
 
-Once the data is in QGIS3 one can do various things with it.
+Once the data is in QGIS4 one can do various things with it.
 
 For example, features (stations, legs, polygons) can be colored
 by elevation to mimic the behaviour of the `aven` viewer in survex
@@ -501,7 +501,7 @@ DEPTH field containing the depth below surface, as SURFACE_ELEV minus
 ELEVATION.  Stations can be colored by this, or the information can
 be added to the 'map tip', etc.
 
-Three dimensional views can be made directly in QGIS3 with 3D Map View
+Three dimensional views can be made directly in QGIS4 with 3D Map View
 though more conveniently with the Qgis2threejs plugin, usually in
 combination with a DEM.  To render features in 3d use the _z_
 co-ordinate for points and lines.  Passage 'tubes' like those in aven
@@ -514,7 +514,7 @@ MEAN_UP.  Then render the polygons with the _z_ co-ordinate as the
 absolute FLOOR, and extruded height as HEIGHT.
 
 Note that there has been a bug in the Qgis2threejs plugin for
-QGIS3 that causes a python error when features have data defined
+QGIS4 that causes a python error when features have data defined
 properties, such as color by elevation using _zmin_ and _zmax_
 variables (second option above).  The error looks like
 
@@ -544,7 +544,7 @@ should change to be colored by elevation.
 
 Note that if you encountered the python error the plugin may not
 function correctly any more.  It may have to reloaded (which can be
-done if you have installed the 'Plugin Reloader' plugin); or QGIS3
+done if you have installed the 'Plugin Reloader' plugin); or QGIS4
 restarted.
 
 ### Example data set
@@ -557,14 +557,19 @@ can be found there as [`DowProv.3d`](DowProv/DowProv.3d).
 
 ### Changelog
 
+v2.0 - update to QGIS4
+
 v1.3.1 (current) - fix to handle how survex embeds EPSG numbers in the `.3d` file.  
 v1.3 - upload to QGIS3 plugin repository  
 v1.2 - fixed CRS import methods  
 v1.1 - minor updates, tagged for packaging  
 v1.0 - migrated and updated from QGIS 2.18 plugin
 
-There is a [QGIS2 version](https://github.com/patrickbwarren/qgis-survex-import)
-of this plugin but it is no longer being maintained.
+The [QGIS3 version](https://github.com/patrickbwarren/qgis3-survex-import) is
+still available but won't be updated.
+
+The [QGIS2 version](https://github.com/patrickbwarren/qgis-survex-import) is
+likewise available.
 
 ### Copying
 
