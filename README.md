@@ -1,5 +1,7 @@
 # QGIS4 plugin to import survex .3d files 
 
+UNDER DEVELOPMENT...
+
 ### Features
 
 * no dependencies (pure python); natively reads binary (v8 format) survex `.3d` files;
@@ -15,8 +17,6 @@ the `.svx` source files (see below).
 _To be done: add functionality to import `.3d` files at <v8 format._
 
 ### Installation
-
-WORK IN PROGRESS UPDATING QGIS3 PLUGIN
 
 The current version (v2.0) will eventually be available through the [QGIS Python Plugins
 Repository](https://plugins.qgis.org/plugins/): launch QGIS4,
