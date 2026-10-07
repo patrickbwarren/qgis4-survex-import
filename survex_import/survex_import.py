@@ -21,10 +21,16 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt5.QtCore import QFileInfo, QDate, QVariant
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QFileDialog
+# Use the qgis.PyQt shim so the same code runs on Qt5 (QGIS 3) and Qt6 (QGIS 4)
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QFileInfo, QDate, QMetaType
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QFileDialog
+
+try: # QAction lives in QtGui in Qt6
+    from qgis.PyQt.QtGui import QAction
+except ImportError: # Qt5
+    from qgis.PyQt.QtWidgets import QAction
 
 from qgis.core import Qgis
 from qgis.core import QgsProject, QgsVectorLayer, QgsField, QgsFeature, QgsGeometry
@@ -33,8 +39,6 @@ from qgis.core import QgsVectorFileWriter, QgsMessageLog
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.gui import QgsProjectionSelectionDialog
 
-# Initialize Qt resources from file resources.py
-from .resources import *
 # Import the code for the dialog
 from .survex_import_dialog import SurvexImportDialog
 
@@ -44,7 +48,31 @@ from math import log10, floor, sqrt
 
 import os # used for file system operations
 
-from osgeo import osr # spatial reference system API
+
+# ---------------------------------------------------------------------
+# Compatibility helpers, so that one code base runs on QGIS 3.x and 4.x
+# ---------------------------------------------------------------------
+
+def _enum(cls, scoped, name):
+    """Return cls.<scoped>.<name> if the scoped enum exists, else cls.<name>"""
+    try:
+        return getattr(getattr(cls, scoped), name)
+    except AttributeError:
+        return getattr(cls, name)
+
+MSG_INFO = _enum(Qgis, 'MessageLevel', 'Info')
+
+# QgsField takes QMetaType types from QGIS 3.38 on (QVariant types are gone in
+# QGIS 4 / Qt6), but only QVariant types before that.
+
+if Qgis.QGIS_VERSION_INT >= 33800:
+    _T = QMetaType.Type
+    FIELD_INT, FIELD_DOUBLE = _T.Int, _T.Double
+    FIELD_STRING, FIELD_DATE = _T.QString, _T.QDate
+else:
+    from qgis.PyQt.QtCore import QVariant
+    FIELD_INT, FIELD_DOUBLE = QVariant.Int, QVariant.Double
+    FIELD_STRING, FIELD_DATE = QVariant.String, QVariant.Date
 
 class SurvexImport:
     """QGIS Plugin Implementation."""
@@ -96,7 +124,7 @@ class SurvexImport:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
+        locale = str(QSettings().value('locale/userLocale', 'en'))[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
@@ -105,9 +133,7 @@ class SurvexImport:
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
-
-            if qVersion() > '4.3.3':
-                QCoreApplication.installTranslator(self.translator)
+            QCoreApplication.installTranslator(self.translator)
 
         # Declare instance attributes
         self.actions = []
@@ -209,7 +235,7 @@ class SurvexImport:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/survex_import/icon.png'
+        icon_path = os.path.join(self.plugin_dir, 'icon.png')
         self.add_action(
             icon_path,
             text=self.tr(u'.3d import'),
@@ -262,7 +288,10 @@ class SurvexImport:
             if match: # if found, use the EPSG number explicitly
                 self.crs.createFromString(f'EPSG:{int(match.group(1))}')
             else: # fall back to proj4
-                self.crs.createFromProj4(s)
+                if hasattr(self.crs, 'createFromProj'): # QGIS >= 3.10
+                    self.crs.createFromProj(s)
+                else:
+                    self.crs.createFromProj4(s)
         else: # fall back to raising a CRS selection dialog
             self.crs_source = 'from dialog'
             dialog = QgsProjectionSelectionDialog()
@@ -271,11 +300,11 @@ class SurvexImport:
             self.crs = dialog.crs() # .. and recover the user input
         if self.crs.isValid():
             msg = 'CRS {} : {}'.format(self.crs_source, self.crs.authid())
-            QgsMessageLog.logMessage(msg, tag='Import .3d', level=Qgis.Info)
-            QgsMessageLog.logMessage(self.crs.description(), tag='Import .3d', level=Qgis.Info)
+            QgsMessageLog.logMessage(msg, tag='Import .3d', level=MSG_INFO)
+            QgsMessageLog.logMessage(self.crs.description(), tag='Import .3d', level=MSG_INFO)
         else: # hopefully never happens
             msg = "CRS invalid!"
-            QgsMessageLog.logMessage(msg, tag='Import .3d', level=Qgis.Info)
+            QgsMessageLog.logMessage(msg, tag='Import .3d', level=MSG_INFO)
             self.crs = None
 
     def all_checked(self):
@@ -315,7 +344,7 @@ class SurvexImport:
         if not layer.isValid():
             raise Exception("Invalid layer with %s" % geom)
         msg = "Memory layer '%s' called '%s' added" % (geom, name)
-        QgsMessageLog.logMessage(msg, tag='Import .3d', level=Qgis.Info)
+        QgsMessageLog.logMessage(msg, tag='Import .3d', level=MSG_INFO)
         return layer
 
 # The next three routines are to do with reading .3d binary file format
@@ -375,7 +404,7 @@ class SurvexImport:
 
         self.dlg.show() # show the dialog
 
-        result = self.dlg.exec_() # Run the dialog event loop
+        result = self.dlg.exec() # Run the dialog event loop
 
         if result:  # The user pressed OK, and this is what happened next!
 
@@ -566,9 +595,9 @@ class SurvexImport:
 
                 station_layer = self.add_layer('stations', 'PointZ')
 
-                attrs = [QgsField(self.station_attr[k], QVariant.Int) for k in self.station_flags]
-                attrs.insert(0, QgsField('ELEVATION', QVariant.Double))
-                attrs.insert(0, QgsField('NAME', QVariant.String))
+                attrs = [QgsField(self.station_attr[k], FIELD_INT) for k in self.station_flags]
+                attrs.insert(0, QgsField('ELEVATION', FIELD_DOUBLE))
+                attrs.insert(0, QgsField('NAME', FIELD_STRING))
                 station_layer.dataProvider().addAttributes(attrs)
                 station_layer.updateFields()
 
@@ -592,15 +621,15 @@ class SurvexImport:
 
                 leg_layer = self.add_layer('legs', 'LineStringZ')
 
-                attrs = [QgsField(self.leg_attr[k], QVariant.Int) for k in self.leg_flags]
+                attrs = [QgsField(self.leg_attr[k], FIELD_INT) for k in self.leg_flags]
                 if nlehv:
-                    [ attrs.insert(0, QgsField(s, QVariant.Double)) for s in self.error_fields ]
-                    attrs.insert(0, QgsField('NLEGS', QVariant.Int))
-                attrs.insert(0, QgsField('DATE2', QVariant.Date))
-                attrs.insert(0, QgsField('DATE1', QVariant.Date))
-                attrs.insert(0, QgsField('STYLE', QVariant.String))
-                attrs.insert(0, QgsField('ELEVATION', QVariant.Double))
-                attrs.insert(0, QgsField('NAME', QVariant.String))
+                    [ attrs.insert(0, QgsField(s, FIELD_DOUBLE)) for s in self.error_fields ]
+                    attrs.insert(0, QgsField('NLEGS', FIELD_INT))
+                attrs.insert(0, QgsField('DATE2', FIELD_DATE))
+                attrs.insert(0, QgsField('DATE1', FIELD_DATE))
+                attrs.insert(0, QgsField('STYLE', FIELD_STRING))
+                attrs.insert(0, QgsField('ELEVATION', FIELD_DOUBLE))
+                attrs.insert(0, QgsField('NAME', FIELD_STRING))
                 leg_layer.dataProvider().addAttributes(attrs)
                 leg_layer.updateFields()
 
@@ -771,7 +800,7 @@ class SurvexImport:
 
                 # End of processing xsect_list - now add features to requested layers
 
-                attrs = [QgsField('ELEVATION', QVariant.Double)] # common to all
+                attrs = [QgsField('ELEVATION', FIELD_DOUBLE)] # common to all
 
                 if include_traverses and trav_features: # traverse layer
                     travs_layer = self.add_layer('traverses', 'LineStringZ')
@@ -795,7 +824,7 @@ class SurvexImport:
                     layers.append(walls_layer)
 
                 if include_up_down: # add fields if requested for polygons
-                    attrs += [QgsField(s, QVariant.Double) for s in ('MEAN_UP', 'MEAN_DOWN')]
+                    attrs += [QgsField(s, FIELD_DOUBLE) for s in ('MEAN_UP', 'MEAN_DOWN')]
 
                 if include_polygons and quad_features: # polygon layer
                     quads_layer = self.add_layer('polygons', 'PolygonZ')
@@ -813,18 +842,37 @@ class SurvexImport:
             # Write to GeoPackage if requested
 
             if gpkg_file:
-                opts = [QgsVectorFileWriter.CreateOrOverwriteFile, QgsVectorFileWriter.CreateOrOverwriteLayer]
+                action = QgsVectorFileWriter.ActionOnExistingFile
+                try:
+                    opts = [action.CreateOrOverwriteFile, action.CreateOrOverwriteLayer]
+                except AttributeError: # older QGIS 3 without scoped access
+                    opts = [QgsVectorFileWriter.CreateOrOverwriteFile,
+                            QgsVectorFileWriter.CreateOrOverwriteLayer]
+                try:
+                    no_error = QgsVectorFileWriter.WriterError.NoError
+                except AttributeError:
+                    no_error = QgsVectorFileWriter.NoError
+                context = QgsProject.instance().transformContext()
                 for i, layer in enumerate(layers):
                     options = QgsVectorFileWriter.SaveVectorOptions()
+                    options.driverName = 'GPKG'
                     options.actionOnExistingFile = opts[int(i > 0)] # create file or layer
                     layer_name = layer.name()
                     match = search(' - ([a-z]*)', layer_name) # ie, extract 'legs', 'stations', etc
                     options.layerName = str(match.group(1)) if match else layer_name
-                    writer = QgsVectorFileWriter.writeAsVectorFormat(layer, gpkg_file, options)
-                    if writer:
+                    if hasattr(QgsVectorFileWriter, 'writeAsVectorFormatV3'): # QGIS >= 3.20
+                        result_w = QgsVectorFileWriter.writeAsVectorFormatV3(layer, gpkg_file, context, options)
+                    else:
+                        result_w = QgsVectorFileWriter.writeAsVectorFormat(layer, gpkg_file, options)
+                    error, error_msg = result_w[0], result_w[1]
+                    if error == no_error:
                         msg = "'{}' -> {} in {}".format(layer_name, options.layerName, gpkg_file)
-                        QgsMessageLog.logMessage(msg, tag='Import .3d', level=Qgis.Info)
-                    options, writer = None, None
+                        QgsMessageLog.logMessage(msg, tag='Import .3d', level=MSG_INFO)
+                    else:
+                        msg = "Failed to write '{}' to {}: {}".format(layer_name, gpkg_file, error_msg)
+                        QgsMessageLog.logMessage(msg, tag='Import .3d', level=Qgis.MessageLevel.Warning
+                                                 if hasattr(Qgis, 'MessageLevel') else Qgis.Warning)
+                    options = None
 
         # End of 'if result:' (what happens if user pressed OK)
 

@@ -14,8 +14,10 @@
 [general]
 name=Import .3d file
 qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
+supportsQt6=True
 description=Import features from survex .3d files
-version=1.3.1
+version=1.4.0
 author=Patrick B Warren
 email=patrickbwarren@gmail.com
 about=Import features into vector layers from a survex .3d file.
@@ -23,7 +25,8 @@ tracker=https://github.com/patrickbwarren/qgis3-survex-import
 repository=https://github.com/patrickbwarren/qgis3-survex-import
 
 changelog=GitHub repository release versions
-    1.3.1 (current) - fix EPSG number
+    1.4.0 (current) - QGIS 4 / Qt6 compatibility, retains QGIS 3 support
+    1.3.1 - fix EPSG number
     1.3  - upload to QGIS3 plugin repository
     1.2 - fixed CRS import methods
     1.1 - minor updates, tagged for packaging
